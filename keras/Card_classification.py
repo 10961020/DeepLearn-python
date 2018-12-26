@@ -69,7 +69,7 @@ train_generator = train_datagen.flow_from_directory(
     target_size=(200, 200),     # 将所有图像的大小调整为150*150
     batch_size=64,              # 每次批量大小
     class_mode='categorical')        # 因为使用的二元交叉熵
-validation_generator = train_datagen.flow_from_directory(
+validation_generator = test_datagen.flow_from_directory(
     validation_dir,             # 验证集路径
     target_size=(200, 200),
     batch_size=64,
