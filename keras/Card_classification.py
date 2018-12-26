@@ -1,7 +1,24 @@
 # !/usr/bin/python  
 # encoding: utf-8
 # author: zhangtong
+'''
+此模型用于无锡科研所 道路车辆图像特征提取人工智能识别算法竞赛参赛 的比赛
+比赛课题为 污损遮挡号牌检测
 
+本人写的第一个神经网络模型 参考<python深度学习>这本书
+因为第一次使用keras 原谅我本文中许多参数注释 
+导入VGG16 去除模型的全连接层 使用迁移学习增加一个拥有64个神经元隐藏层和一个4维向量的输出层 (尝试过128，256神经元的隐藏层，验证集结果一直处于80%精度，训练已经达到98%)
+思考很久应该是数据太少 以及还有错误数据的缘故
+
+训练迭代140次(比赛时间太短，当时能使用的只有一个1080Ti的GPU)的测试成绩87.56 四类图片各十张
+半遮挡 全遮挡 部分遮挡 三类测试数据查准率为100%，正常图片查准率为40% 五张分到全遮挡 一张分到部分遮挡
+由于比赛方正常图片数据样本8W张 其他数据加起来不到一万，以及需要大量的数据清洗(数据中错误图片很多 包括分类错误、无关图片等)比较侧重于对其他三类数据的照顾
+使用的训练集 比较少 正常2000左右 其他加起来2000左右 测试结果对正常图片拟合不够 下次注意 
+跟同组讨论交流学习到清华教授的一些关于对数据清理的见解，茅塞顿开。奈何当时没有清理的条件，没能使用 很可惜
+
+总结一下 数据清理的不够好 导致模型没能可以愉快学习特征 一块好的GPU真的很重要 GPU真的是越多越好能同时跑多个模型 效率提高
+
+'''
 from keras import models
 from keras import layers
 from keras import optimizers
@@ -67,11 +84,11 @@ history = model.fit_generator(              # 开始训练
 
 model.save('car_small_3.h5')      # 保存训练好的模型参数
 
-acc = history.history['acc']
-val_acc = history.history['val_acc']
-loss = history.history['loss']
-val_loss = history.history['val_loss']
-
+# acc = history.history['acc']
+# val_acc = history.history['val_acc']
+# loss = history.history['loss']
+# val_loss = history.history['val_loss']
+# 
 # epochs = range(1, len(acc)+1)
 #
 # plt.plot(epochs, acc, 'bo', label='Training_acc')
@@ -109,12 +126,3 @@ history = model.fit_generator(              # 开始训练
     validation_steps=50)                    # 从验证集里抽取多少个批量用于评估
 
 model.save('car_small_4.h5')
-
-history = model.fit_generator(              # 开始训练
-    train_generator,                        # 训练模型使用的训练集图像生成器
-    steps_per_epoch=55,                    # 从生成器中抽取 steps_per_epoch 个批量后，进入下次迭代
-    epochs=100,                              # 迭代次数
-    validation_data=validation_generator,   # 验证集
-    validation_steps=50)                    # 从验证集里抽取多少个批量用于评估
-
-model.save('car_small_56789.h5')
