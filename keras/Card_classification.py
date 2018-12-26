@@ -18,6 +18,8 @@
 
 总结一下 数据清理的不够好 导致模型没能可以愉快学习特征 一块好的GPU真的很重要 GPU真的是越多越好能同时跑多个模型 效率提高
 
+
+最新总结 验证集不能做数据增强！！！！！！！！！   嘴上说着不能  代码居然给增强了
 '''
 from keras import models
 from keras import layers
