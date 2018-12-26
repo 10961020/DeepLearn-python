@@ -2,7 +2,9 @@
 # -*- coding:utf-8 -*-
 # @Time     :2018/12/20 9:14
 # @Author   :tong.z
-
+'''
+无锡所比赛所使用的对测试集的验证分类
+'''
 from keras.preprocessing import image
 from keras.preprocessing.image import ImageDataGenerator
 from keras.models import load_model
@@ -37,7 +39,7 @@ for root, dirs, files in os.walk(test_dir):
         # print(i[1])
         j = (int(i[1])+2) % 4     # label 装换
         with open('result.txt', "a") as f:
-            f.write(str(j) + '#' + jpg_path)
+            f.write(str(j) + '#' + jpg_path+'\n')
 '''
 半遮挡 全遮挡 未悬挂 正常
 未悬挂 正常 部分遮挡 完全遮挡
