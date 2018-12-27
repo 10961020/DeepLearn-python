@@ -109,7 +109,7 @@ model.save('car_small_3.h5')      # 保存训练好的模型参数
 conv_base.trainable = True
 set_trainable = False
 for layer in conv_base.layers:
-    if layer.name == 'block5_conv1' or layer.name == 'block4_conv1':
+    if layer.name == 'block5_conv1':
         set_trainable = True
     if set_trainable:
         layer.trainable = True
