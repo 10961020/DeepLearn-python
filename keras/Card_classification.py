@@ -112,14 +112,14 @@ for layer in conv_base.layers:
     if layer.name == 'block5_conv1' or layer.name == 'block4_conv1':
         set_trainable = True
     if set_trainable:
-        layers.trainable = True
+        layer.trainable = True
     else:
-        layers.trainable = False
-model.summary()
+        layer.trainable = False
+
 model.compile(loss='categorical_crossentropy',               # 使用的损失函数 二元交叉熵
               optimizer=optimizers.RMSprop(lr=1e-5),    # 使用的优化器 RMS
               metrics=['acc'])                          # 监控精度
-
+model.summary()
 history = model.fit_generator(              # 开始训练
     train_generator,                        # 训练模型使用的训练集图像生成器
     steps_per_epoch=281,                    # 从生成器中抽取 steps_per_epoch 个批量后，进入下次迭代
