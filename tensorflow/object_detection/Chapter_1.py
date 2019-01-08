@@ -1,14 +1,16 @@
 # !/usr/bin/python  
 # encoding: utf-8
 # Author: zhangtong
-# Time: 2018/12/29 16:33
+# Time: 2019/1/7 10:33
 import os
 import numpy as np
 import sys
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from PIL import Image
-
+'''
+    目标检测打标签是一件特么痛苦的事情，此模块可以使用一个小型的标签数据训练好的模型 帮助你进行大规模的打标签的工作
+'''
 # 将目标目录导入进来，这样才能执行下边两句导入命令
 # label_map_util,visualization_utils文件路径自行寻找 简单粗暴点 进入research目录全局搜这俩模块名
 sys.path.insert(0, "D:/1/python3/Lib/site-packages/tensorflow/models/research/build/lib/object_detection")
