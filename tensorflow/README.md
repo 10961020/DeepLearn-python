@@ -1,1 +1,2 @@
-关于tensorflow工作中的心得
+关于tensorflow工作中的心得  
+object_detection目录下是关于目标检测的内容
