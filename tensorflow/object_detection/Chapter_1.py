@@ -9,13 +9,13 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 from PIL import Image
 '''
-    目标检测打标签是一件特么痛苦的事情，此模块可以使用一个小型的标签数据训练好的模型 帮助你进行大规模的打标签的工作
+    目标检测打标签是一件特别痛苦的事情，此模块可以使用一个小型的标签数据训练好的模型 帮助你进行大规模的打标签的工作
     首先你需要有一个小型的训练模型帮助你做打标签 这个模型自己训练喽 xml使用的模版我已给出 pbtxt如果你有小型模型的话 这个文件你也应该有的
     代码中注释的部分都可以修改 我已给出作用
 '''
 # 将目标目录导入进来，这样才能执行下边两句导入命令
 # label_map_util,visualization_utils文件路径自行寻找 简单粗暴点 进入research目录全局搜这俩模块名
-sys.path.insert(0, "D:/1/python3/Lib/site-packages/tensorflow/models/research/build/lib/object_detection")
+sys.path.insert(0, "/usr/local/lib/python3.6/dist-packages/tensorflow/models/research/object_detection/")
 from utils import label_map_util
 from utils import visualization_utils as vis_util
 import xml.etree.ElementTree as ET
@@ -31,10 +31,10 @@ def load_image_into_numpy_array(image):
 # 第三个全局是自训练的目录 路径名最后一层必须是 “img” 因为我懒得加这个在xml里 如果不是 打的标签好像不能用 日常迷信一下
 # 第四个保存的xml路径
 # oragn也是重要的参数 保存的自训练模版的文件 可以看到第二行的数据就是 img
-PATH_TO_FROZEN_GRAPH = 'C:/Users/Administrator/Desktop/car_position/frozen_inference_graph.pb'
-PATH_TO_LABELS = 'C:/Users/Administrator/Desktop/car_position//own_label_map.pbtxt'
-TEST_IMAGE_PATHS = 'C:/Users/Administrator/Desktop/img/'
-TEST_XML_PATHS = 'C:/Users/Administrator/Desktop/img/xml/'
+PATH_TO_FROZEN_GRAPH = '/data/Deeplearn/wusun/car_dingwei/pretrained/frozen_inference_graph.pb'
+PATH_TO_LABELS = '/data/Deeplearn/wusun/car_dingwei/own_label_map.pbtxt'
+TEST_IMAGE_PATHS = '/data/Deeplearn/wusun/car_dingwei/img/'
+TEST_XML_PATHS = '/data/Deeplearn/wusun/car_dingwei/img/xml/'
 NUM_CLASSES = 1
 
 detection_graph = tf.Graph()
@@ -96,7 +96,7 @@ with detection_graph.as_default():
                 # print("output_dict['num_detections']: ", output_dict['num_detections'])
 
                 image2 = Image.fromarray(image_np)
-                image2.save('1.jpg')  # 需要保存生成的图片的话  你给他个路径 推荐使用新的文件路径 名字就可以跟使用的文件名一样啦
+                image2.save('/data/Deeplearn/wusun/car_dingwei/img1/'+image_path)  # 保存处理结果图片 你给他个路径不需要的就注释吧 推荐使用新的文件路径 名字就可以跟使用的文件名一样啦
                 organ = "./xiugai.xml"  # 这个是我给出的xml模型路径 跟程序放一块就好了不用修改
                 for i in range(output_dict['num_detections']):
                     
