@@ -52,6 +52,13 @@ category_index = label_map_util.create_category_index(categories)
 with detection_graph.as_default():
     with tf.Session() as sess:
         tree = ET.ElementTree()
+        ops = tf.get_default_graph().get_operations()
+        all_tensor_names = {output.name for op in ops for output in op.outputs}
+        tensor_dict = {}
+        for key in ['num_detections', 'detection_boxes', 'detection_scores', 'detection_classes', 'detection_masks']:
+            tensor_name = key + ':0'
+            if tensor_name in all_tensor_names:
+                tensor_dict[key] = tf.get_default_graph().get_tensor_by_name(tensor_name)
         for path, dirs, files in os.walk(TEST_IMAGE_PATHS):
             for image_path in files:
                 image_1 = Image.open(path+image_path)
@@ -60,17 +67,7 @@ with detection_graph.as_default():
                 # 图片扩展一维，最后进入神经网络的图片格式应该为[1, ?, ?, 3]
                 image_np_expanded = np.expand_dims(image_np, axis=0)
 
-                ops = tf.get_default_graph().get_operations()
-                all_tensor_names = {output.name for op in ops for output in op.outputs}
-                tensor_dict = {}
-                for key in [
-                        'num_detections', 'detection_boxes', 'detection_scores', 'detection_classes', 'detection_masks']:
-                    tensor_name = key + ':0'
-                    if tensor_name in all_tensor_names:
-                        tensor_dict[key] = tf.get_default_graph().get_tensor_by_name(tensor_name)
-
                 image_tensor = tf.get_default_graph().get_tensor_by_name('image_tensor:0')
-
                 output_dict = sess.run(tensor_dict, feed_dict={image_tensor: image_np_expanded})
 
                 output_dict['num_detections'] = int(output_dict['num_detections'][0])
@@ -87,13 +84,13 @@ with detection_graph.as_default():
                     instance_masks=output_dict.get('detection_masks'),
                     use_normalized_coordinates=True,
                     line_thickness=8)
-                # plt.figure(figsize=IMAGE_SIZE)
-                # plt.imshow(image_np)
-                # plt.show()
-                # print("output_dict['detection_boxes']: ", output_dict['detection_boxes'])
-                # print("output_dict['detection_classes']: ", output_dict['detection_classes'])
-                # print("output_dict['detection_scores']: ", output_dict['detection_scores'])
-                # print("output_dict['num_detections']: ", output_dict['num_detections'])
+#                 plt.figure(figsize=IMAGE_SIZE)
+#                 plt.imshow(image_np)
+#                 plt.show()
+#                 print("output_dict['detection_boxes']: ", output_dict['detection_boxes'])
+#                 print("output_dict['detection_classes']: ", output_dict['detection_classes'])
+#                 print("output_dict['detection_scores']: ", output_dict['detection_scores'])
+#                 print("output_dict['num_detections']: ", output_dict['num_detections'])
 
                 image2 = Image.fromarray(image_np)
                 image2.save('/data/Deeplearn/wusun/car_dingwei/img1/'+image_path)  # 保存处理结果图片 你给他个路径不需要的就注释吧 推荐使用新的文件路径 名字就可以跟使用的文件名一样啦
