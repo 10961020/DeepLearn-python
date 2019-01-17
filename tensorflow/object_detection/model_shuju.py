@@ -2,7 +2,10 @@
 # encoding: utf-8
 # Author: zhangtong
 # Time: 2019/1/11 10:53
-
+'''
+    使用已有的模型帮助从数据图像收集需要的样本数据
+    例如从从户外场景的图片中 截取出车、人等可以使用的训练数据
+'''
 import os
 import numpy as np
 import sys
@@ -87,7 +90,7 @@ with detection_graph.as_default():
                 image2 = Image.fromarray(image_np)
                 # image2.save('{}.jpg'.format(value))
                 # value += 1
-                for i in range(output_dict['num_detections']):
+                for i in range(output_dict['num_detections']):  # 这里只是针对单个样本 如果需要对多种不同的样本 需要修改
                     if output_dict['detection_scores'][i] < 0.8:
                         break
                     img = image2.crop((int(image2.size[0] * output_dict['detection_boxes'][i][1]),
