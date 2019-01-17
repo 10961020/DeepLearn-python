@@ -2,7 +2,9 @@
 # encoding: utf-8
 # Author: zhangtong
 # Time: 2019/1/15 15:47
-
+'''
+    根据已经有的模型.h5文件 继续进行训练样例
+'''
 from keras import models
 from keras import layers
 from keras import optimizers
@@ -14,7 +16,7 @@ import matplotlib.pyplot as plt
 import os
 
 
-base_dir = '/data/Deeplearn/wusun/2/'  # 保存较小数据集的目录
+base_dir = '/data/Deeplearn/wusun/2/'  # 小数据集的路径
 train_dir = os.path.join(base_dir, 'train')
 # os.mkdir(train_dir)
 validation_dir = os.path.join(base_dir, 'validation')
@@ -22,7 +24,7 @@ validation_dir = os.path.join(base_dir, 'validation')
 test_dir = os.path.join(base_dir, 'test')
 # os.mkdir(test_dir)
 
-model = load_model('wusun_1.h5')
+model = load_model('wusun_1.h5')  # 打开本地模型 使用此模型继续训练
 # model.trainable = True
 set_trainable = False
 for layer in model.layers:
