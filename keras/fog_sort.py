@@ -12,6 +12,8 @@ import numpy as np
 from keras.models import load_model
 from keras.preprocessing import image
 '''
+    一个可以初版上线的团雾检测统计以及收集更多的公路数据的程序
+
     需要修改的有PATH_TO_VIDEO、TECT_IMAGE_PATHS变量      <----重点!!!
     每次迭代生成的txt说明文件在程序根目录下 文件名为当时生成文件的时间戳
     文件说明 缩写：文件名     | 缩写如下 文件名在各个缩写的文件中
