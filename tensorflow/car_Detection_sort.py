@@ -15,6 +15,8 @@ import tensorflow as tf
 from keras.models import load_model
 from keras.preprocessing import image
 '''
+   一个可以初版上线的车辆定位并且根据污损分类统计以及更丰富的车辆数据的代码
+    
     需要修改的有PATH_TO_VIDEO、TEST_IMAGE_PATHS变量      <----重点!!!
     生成图片的路径下有原图备份的文件夹 yt/ 其他几个为了数据收集用
     每次迭代生成的txt说明文件在程序根目录下 文件名为当时生成文件的时间戳
