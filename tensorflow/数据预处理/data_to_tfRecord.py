@@ -2,7 +2,9 @@
 # encoding: utf-8
 # Author: zhangtong
 # Time: 2019/3/21 10:43
-
+'''
+    将数据存储为TFrecord格式
+'''
 import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import input_data
 import numpy as np
@@ -33,4 +35,4 @@ with tf.python_io.TFRecordWriter(filename) as writer:
             'pixels': int64_feature(pixels),
             'label': int64_feature(np.argmax(labels[index])),
             'image_raw': bytes_feature(image_raw)}))  # 将一个样例转化为Example Protocol Buffter,并将所有信息写入这个结构中
-    writer.write(example.SerializeToString())
+        writer.write(example.SerializeToString())
