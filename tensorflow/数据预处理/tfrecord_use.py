@@ -2,7 +2,9 @@
 # encoding: utf-8
 # Author: zhangtong
 # Time: 2019/3/21 11:18
-
+'''
+    tfrecord使用案例
+'''
 import tensorflow as tf
 
 # 创建一个reader来读取tfrecord文件中的样例
