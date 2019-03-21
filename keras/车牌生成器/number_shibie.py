@@ -2,6 +2,10 @@
 # encoding: utf-8
 # Author: zhangtong
 # Time: 2019/3/5 15:53
+'''
+         程序使用到的数据集是车牌生成器随机生成的数据
+         参考https://cloud.tencent.com/developer/article/1005199
+'''
 from keras.models import Model
 from keras.callbacks import ModelCheckpoint
 from keras.layers import Conv2D, MaxPool2D, Flatten, Dropout, Dense, Input
