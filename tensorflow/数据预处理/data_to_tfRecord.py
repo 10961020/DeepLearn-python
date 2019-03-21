@@ -3,7 +3,7 @@
 # Author: zhangtong
 # Time: 2019/3/21 10:43
 '''
-    将数据存储为TFrecord格式
+    将数据存储为TFrecord格式案例
 '''
 import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import input_data
