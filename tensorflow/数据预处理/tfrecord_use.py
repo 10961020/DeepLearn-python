@@ -26,6 +26,7 @@ image = tf.decode_raw(features['image_raw'], tf.uint8)
 label = tf.cast(features['label'], tf.int32)
 pixels = tf.cast(features['pixels'], tf.int32)
 
+# 29-36行的数据是每次读取多个样例的时候需要的 单张图片的话把这些行注释，并且需要替换44行run里的参数改为上三行变量
 batch_size = 2
 capacity = 1000 + 3 * batch_size
 image.set_shape([10, 784])
