@@ -5,7 +5,9 @@
 
 import matplotlib.pyplot as plt
 import tensorflow as tf
-
+'''
+    图片处理试样
+'''
 image_raw_data = tf.gfile.FastGFile('./flower_photos/sunflowers/23645265812_24352ff6bf.jpg', 'rb').read()
 print(image_raw_data)
 
