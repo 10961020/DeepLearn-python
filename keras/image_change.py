@@ -4,7 +4,9 @@
 
 from keras.preprocessing import image
 from keras.preprocessing.image import ImageDataGenerator
-
+'''
+    图片预处理图片随机变幻 数据集较少可以使用
+'''
 train_datagen = ImageDataGenerator(
     # rescale=1./255,             # 图像乘以1./255 缩放到0-1之间
     rotation_range=60,          # 角度值，图像随机旋转的角度范围
