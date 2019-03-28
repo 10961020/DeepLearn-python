@@ -38,6 +38,6 @@ with open('aeroplane_train.txt', 'a')as train_f:
             chance = np.random.randint(100)  # 真随机  8 1 1比例分配训练验证测试集
             print(chance)
             if chance < 20:
-                val_f.write(os.path.basename(file)+'\n')
+                val_f.write(os.path.splitext(os.path.basename(file))[0]+'\n')
             else:
-                train_f.write(os.path.basename(file) + '\n')
+                train_f.write(os.path.splitext(os.path.basename(file))[0]+'\n')
