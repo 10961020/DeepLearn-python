@@ -10,6 +10,9 @@
 '''
 
 import os
+import glob
+import numpy as np
+
 file_dir = 'C:/Users/Administrator/Desktop/car_position/category_aircraft/VOC2007/Annotations/'  # 图片路径
 files_dir = 'C:/Users/Administrator/Desktop/car_position/category_aircraft/VOC2007/imageSets/Main/'  # txt生成路径
 value = 0
