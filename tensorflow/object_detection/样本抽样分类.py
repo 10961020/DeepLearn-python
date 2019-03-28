@@ -31,3 +31,13 @@ for root, dirs, files in os.walk(file_dir):
                 f.write(files[i][:files[i].find('.')]+'\n')
                 value += 1
 
+with open('aeroplane_train.txt', 'a')as train_f:
+    with open('aeroplane_val.txt', 'a')as val_f:
+        for file in glob.glob('./lirang/*/*.jpg'):
+            print(os.path.basename(file))
+            chance = np.random.randint(100)  # 真随机  8 1 1比例分配训练验证测试集
+            print(chance)
+            if chance < 20:
+                val_f.write(os.path.basename(file)+'\n')
+            else:
+                train_f.write(os.path.basename(file) + '\n')
