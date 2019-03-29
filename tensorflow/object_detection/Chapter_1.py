@@ -2,127 +2,173 @@
 # encoding: utf-8
 # Author: zhangtong
 # Time: 2019/1/7 10:33
-import os
-import numpy as np
-import sys
-import tensorflow as tf
-import matplotlib.pyplot as plt
-from PIL import Image
 '''
     目标检测打标签是一件特别痛苦的事情，此模块可以使用一个小型的标签数据训练好的模型 帮助你进行大规模的打标签的工作
     首先你需要有一个小型的训练模型帮助你做打标签 这个模型自己训练喽 xml使用的模版我已给出 pbtxt如果你有小型模型的话 这个文件你也应该有的
     代码中注释的部分都可以修改 我已给出作用
 '''
-# 将目标目录导入进来，这样才能执行下边两句导入命令
-# label_map_util,visualization_utils文件路径自行寻找 简单粗暴点 进入research目录全局搜这俩模块名
-sys.path.insert(0, "/usr/local/lib/python3.6/dist-packages/tensorflow/models/research/object_detection/")
-from utils import label_map_util
-from utils import visualization_utils as vis_util
+import os
+import time
+import shutil
+import numpy as np
+from PIL import Image
+import tensorflow as tf
 import xml.etree.ElementTree as ET
+from keras.preprocessing import image
+from multiprocessing import Process, Pipe
+
+PATH_TO_FROZEN_GRAPH = 'rilang_fenkai.pb'  # 模型
+TEST_IMAGE_PATHS = 'C:/Users/Administrator/Desktop/good'  # 需要标注的源数据
+RESULT_IMAGE_PATHS = 'D:/1/project/wuxi/img'  # 经过标注的图片
+TEST_XML_PATHS = 'D:/1/project/wuxi/xml'  # 经过标注的xml
+class_num = [' ', 'car', 'person']
+
+if not os.path.exists(RESULT_IMAGE_PATHS):
+    os.makedirs(RESULT_IMAGE_PATHS)
+if not os.path.exists(TEST_XML_PATHS):
+    os.makedirs(TEST_XML_PATHS)
 
 
-def load_image_into_numpy_array(image):
-    im_width, im_height = image.size
-    return np.array(image.getdata()).reshape((im_height, im_width, 3)).astype(np.uint8)
+def file_split(image_path):
+    file2 = image_path.split('_')
+    file2[6] = '2'
+    file2 = '_'.join(file2)
+    file3 = image_path.split('_')
+    file3[6] = '3'
+    file3 = '_'.join(file3)
+    return file2, file3
 
 
-# frozen_inference_graph.pb中保存的网络的结构跟数据
-# own_label_map.pbtxt中保存index到类别名的映射 需要通过pbtxt具体对应的类别是什么
-# 第三个全局是自训练的目录 路径名最后一层必须是 “img” 因为我懒得加这个在xml里 如果不是 打的标签好像不能用 日常迷信一下
-# 第四个保存的xml路径
-# oragn也是重要的参数 保存的自训练模版的文件 可以看到第二行的数据就是 img
-PATH_TO_FROZEN_GRAPH = '/data/Deeplearn/wusun/car_dingwei/pretrained/frozen_inference_graph.pb'
-PATH_TO_LABELS = '/data/Deeplearn/wusun/car_dingwei/own_label_map.pbtxt'
-TEST_IMAGE_PATHS = '/data/Deeplearn/wusun/car_dingwei/img/'
-TEST_XML_PATHS = '/data/Deeplearn/wusun/car_dingwei/img/xml/'
-NUM_CLASSES = 1
+def tf_pretreatment(image_path, files, path):
+    tf_list, img_list = [], []
+    file2, file3 = file_split(image_path)
+    try:
+        if file2 in files and file3 in files:  # 多张一组 只看2，3两张
+            for i in [file2, file3]:
+                image_2 = Image.open(os.path.join(path, i))
+                image_2 = image_2.crop((0, 0, image_2.size[0], image_2.size[1]*0.8))
+                img_list.append(image.img_to_array(image_2).astype(np.uint8))
+                tf_list.append(np.expand_dims(img_list[-1], axis=0))
+        else:  # 4*4 只看2，3张
+            image_1 = Image.open(os.path.join(path, image_path))
+            img_1, img_find = [], []
+            height, weight = image_1.size
+            if height % 2:
+                image_1 = image_1.resize((height-1, weight))
+            if weight % 2:
+                image_1 = image_1.resize((height, weight-1))
+            for i in [0, 0.5]:
+                for j in [0, 0.5]:
+                    img_linshi = image_1.crop((image_1.size[0]*j, image_1.size[1]*i, image_1.size[0]*j+image_1.size[0]/2, image_1.size[1]*i+image_1.size[1]/2))
+                    img_1.append(img_linshi.crop((0, 0, img_linshi.size[0], img_linshi.size[1]*0.8)))
+                    big_image = image_1.crop((image_1.size[0]*j, image_1.size[1]*i, image_1.size[0]*j+image_1.size[0]/5, image_1.size[1]*i+image_1.size[1]/5))
+                    img_find.append(np.array(big_image))
+            del img_1[find_difference(img_find)]
+            del img_1[0]
+            for i in img_1:
+                img_list.append(image.img_to_array(i).astype(np.uint8))
+                tf_list.append(np.expand_dims(img_list[-1], axis=0))
+        return [tf_list, img_list]
+    except OSError:  # 可以在这里删除错误图片 我没删
+        print('这个有问题的图片{}'.format(image_path))
+        return None
 
-detection_graph = tf.Graph()
-with detection_graph.as_default():
-    od_graph_def = tf.GraphDef()
-    with tf.gfile.GFile(PATH_TO_FROZEN_GRAPH, 'rb') as fid:
-        serialized_graph = fid.read()
-        od_graph_def.ParseFromString(serialized_graph)
-        tf.import_graph_def(od_graph_def, name='')
 
-label_map = label_map_util.load_labelmap(PATH_TO_LABELS)
-categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=NUM_CLASSES, use_display_name=True)
-category_index = label_map_util.create_category_index(categories)
+# 找特写图
+def find_difference(image_list, threshold=10):
+    image_num = len(image_list)
+    mask = np.zeros((image_num, image_num))
+    for i in range(image_num):
+        for j in range(i+1, image_num):
+            mask[i, j] = mask[j, i] = np.sum((np.abs(image_list[i] - image_list[j])) < threshold)
+    mask = np.sum(mask, axis=1)
+    return np.argmin(mask)
 
-with detection_graph.as_default():
-    with tf.Session() as sess:
-        tree = ET.ElementTree()
-        ops = tf.get_default_graph().get_operations()
-        all_tensor_names = {output.name for op in ops for output in op.outputs}
-        tensor_dict = {}
-        for key in ['num_detections', 'detection_boxes', 'detection_scores', 'detection_classes', 'detection_masks']:
-            tensor_name = key + ':0'
-            if tensor_name in all_tensor_names:
-                tensor_dict[key] = tf.get_default_graph().get_tensor_by_name(tensor_name)
-        for path, dirs, files in os.walk(TEST_IMAGE_PATHS):
-            for image_path in files:
-                image_1 = Image.open(path+image_path)
-                # 图片转换为numpy的形式
-                image_np = load_image_into_numpy_array(image_1)
-                # 图片扩展一维，最后进入神经网络的图片格式应该为[1, ?, ?, 3]
-                image_np_expanded = np.expand_dims(image_np, axis=0)
 
-                image_tensor = tf.get_default_graph().get_tensor_by_name('image_tensor:0')
-                output_dict = sess.run(tensor_dict, feed_dict={image_tensor: image_np_expanded})
+def models_yuce(con):
+    detection_graph = tf.Graph()  # 加载目标定位模型
+    with detection_graph.as_default():
+        od_graph_def = tf.GraphDef()
+        with tf.gfile.GFile(PATH_TO_FROZEN_GRAPH, 'rb') as fid:
+            serialized_graph = fid.read()
+            od_graph_def.ParseFromString(serialized_graph)
+            tf.import_graph_def(od_graph_def, name='')
 
-                output_dict['num_detections'] = int(output_dict['num_detections'][0])
-                output_dict['detection_classes'] = output_dict['detection_classes'][0].astype(np.uint8)
-                output_dict['detection_boxes'] = output_dict['detection_boxes'][0]
-                output_dict['detection_scores'] = output_dict['detection_scores'][0]
+    c1, c2 = con
+    c1.close()  # 主进程用conn1发送数据,子进程要用对应的conn2接受,所以讲conn1关闭,不关闭程序会阻塞
+    with detection_graph.as_default():
+        with tf.Session() as sess:
+            ops = tf.get_default_graph().get_operations()
+            all_tensor_names = {output.name for op in ops for output in op.outputs}
+            tensor_dict = {}
+            for key in ['num_detections', 'detection_boxes', 'detection_scores', 'detection_classes', 'detection_masks']:
+                tensor_name = key + ':0'
+                if tensor_name in all_tensor_names:
+                    tensor_dict[key] = tf.get_default_graph().get_tensor_by_name(tensor_name)
+            image_tensor = tf.get_default_graph().get_tensor_by_name('image_tensor:0')
+            while True:
+                try:  # 异常处理,出现异常退出
+                    tf_list = c2.recv()
+                    value = 0  # 0左1右
+                    for image_np_expanded in tf_list[0]:  # 一组违法一张一张跑
+                        output_dict = sess.run(tensor_dict, feed_dict={image_tensor: image_np_expanded})
+                        output_dict['num_detections'] = int(output_dict['num_detections'][0])
+                        output_dict['detection_classes'] = output_dict['detection_classes'][0].astype(np.uint8)
+                        output_dict['detection_boxes'] = output_dict['detection_boxes'][0]
+                        output_dict['detection_scores'] = output_dict['detection_scores'][0]
 
-                vis_util.visualize_boxes_and_labels_on_image_array(
-                    image_np,
-                    output_dict['detection_boxes'],
-                    output_dict['detection_classes'],
-                    output_dict['detection_scores'],
-                    category_index,
-                    instance_masks=output_dict.get('detection_masks'),
-                    use_normalized_coordinates=True,
-                    line_thickness=8)
-#                 plt.figure(figsize=IMAGE_SIZE)
-#                 plt.imshow(image_np)
-#                 plt.show()
-#                 print("output_dict['detection_boxes']: ", output_dict['detection_boxes'])
-#                 print("output_dict['detection_classes']: ", output_dict['detection_classes'])
-#                 print("output_dict['detection_scores']: ", output_dict['detection_scores'])
-#                 print("output_dict['num_detections']: ", output_dict['num_detections'])
+                        image2 = Image.fromarray(tf_list[1][value])
+                        image2.save(os.path.join(RESULT_IMAGE_PATHS, '{}_{}{}'.format(os.path.splitext(tf_list[2])[0], value, os.path.splitext(tf_list[2])[1])))
+                        organ = "./xiugai.xml"
+                        num_output = 0
+                        for i in range(output_dict['num_detections']):
+                            tree = ET.ElementTree()
+                            tree.parse(organ)
+                            if output_dict['detection_scores'][i] < 0.5:
+                                break
+                            if output_dict['detection_classes'][i] != 1 and output_dict['detection_classes'][i] != 2:
+                                continue
+                            if num_output == 0:
+                                num_output += 1
+                                tree.find("filename").text = tf_list[2]
+                                tree.find("path").text = os.path.join(RESULT_IMAGE_PATHS, '{}_{}{}'.format(os.path.splitext(tf_list[2])[0], value, os.path.splitext(tf_list[2])[1]))
+                                tree.find("size/width").text = str(image2.size[0])
+                                tree.find("size/height").text = str(image2.size[1])
+                            root = tree.getroot()
+                            firstNode = ET.Element("object")
+                            ET.SubElement(firstNode, "name").text = class_num[output_dict['detection_classes'][i]]
+                            ET.SubElement(firstNode, "pose").text = 'Unspecified'
+                            ET.SubElement(firstNode, "truncated").text = '0'
+                            ET.SubElement(firstNode, "difficult").text = '0'
+                            twoNode = ET.SubElement(firstNode, "bndbox")
+                            ET.SubElement(twoNode, "xmin").text = str(int(image2.size[0] * output_dict['detection_boxes'][i][1]))
+                            ET.SubElement(twoNode, "ymin").text = str(int(image2.size[1] * output_dict['detection_boxes'][i][0]))
+                            ET.SubElement(twoNode, "xmax").text = str(int(image2.size[0] * output_dict['detection_boxes'][i][3]))
+                            ET.SubElement(twoNode, "ymax").text = str(int(image2.size[1] * output_dict['detection_boxes'][i][2]))
+                            root.append(firstNode)
+                            organ = os.path.join(TEST_XML_PATHS, '{}_{}'.format(os.path.splitext(tf_list[2])[0], value) + '.xml')
+                            tree.write(organ)
+                        print(organ)
+                        value += 1
+                except EOFError:
+                    break
 
-                image2 = Image.fromarray(image_np)
-                image2.save('/data/Deeplearn/wusun/car_dingwei/img1/'+image_path)  # 保存处理结果图片 你给他个路径不需要的就注释吧 推荐使用新的文件路径 名字就可以跟使用的文件名一样啦
-                organ = "./xiugai.xml"  # 这个是我给出的xml模型路径 跟程序放一块就好了不用修改
-                for i in range(output_dict['num_detections']):
-                    
-                    tree.parse(organ)
-                    if output_dict['detection_scores'][i] < 0.8: # 保留多大得分的选框 由你决定
-                        break
-                    if i == 0:  # 如果图片中就一个目标
-                        tree.find("filename").text = image_path
-                        tree.find("path").text = path+image_path
-                        tree.find("size/width").text = str(image2.size[0])
-                        tree.find("size/height").text = str(image2.size[1])
-                        tree.find("object/bndbox/xmin").text = str(int(image2.size[0]*output_dict['detection_boxes'][i][1]))
-                        tree.find("object/bndbox/ymin").text = str(int(image2.size[1]*output_dict['detection_boxes'][i][0]))
-                        tree.find("object/bndbox/xmax").text = str(int(image2.size[0]*output_dict['detection_boxes'][i][3]))
-                        tree.find("object/bndbox/ymax").text = str(int(image2.size[1]*output_dict['detection_boxes'][i][2]))
-                        organ = TEST_XML_PATHS + os.path.splitext(image_path)[0] + '.xml'
-                    else:  # 在这个图片里发现多个目标 追加object
-                        root = tree.getroot()
-                        firstNode = ET.Element("object")
-                        ET.SubElement(firstNode, "name").text = 'car'
-                        ET.SubElement(firstNode, "pose").text = 'Unspecified'
-                        ET.SubElement(firstNode, "truncated").text = '0'
-                        ET.SubElement(firstNode, "difficult").text = '0'
-                        twoNode = ET.SubElement(firstNode, "bndbox")
-                        ET.SubElement(twoNode, "xmin").text = str(int(image2.size[0]*output_dict['detection_boxes'][i][1]))
-                        ET.SubElement(twoNode, "ymin").text = str(int(image2.size[1]*output_dict['detection_boxes'][i][0]))
-                        ET.SubElement(twoNode, "xmax").text = str(int(image2.size[0]*output_dict['detection_boxes'][i][3]))
-                        ET.SubElement(twoNode, "ymax").text = str(int(image2.size[1]*output_dict['detection_boxes'][i][2]))
-                        root.append(firstNode)  # 追加到xml文件 如果有多的目标框
-                    tree.write(organ)
-            break
-
+if __name__ == '__main__':
+    conn1, conn2 = Pipe()  # 开启管道
+    p = Process(target=models_yuce, args=((conn1, conn2),))  # 将管道的两个返回值以元组形式传给子进程
+    p.start()
+    conn2.close()  # 用conn1发送数据,conn2不用,将其关闭
+    for path, dirs, files in os.walk(TEST_IMAGE_PATHS):
+        for image_path in files:
+            if image_path.split('_')[6] != '1':  # 碰到组合图片不是第一张图片直接跳过
+                continue
+            print(time.strftime("%Y-%m-%d %H:%M:%S ", time.localtime()), os.path.join(path, image_path))
+            tfrecord_list = tf_pretreatment(image_path, files, path)  # 图片预处理
+            if tfrecord_list:  # 能进这说明这张不是损坏图片
+                tfrecord_list.append(image_path)
+                tfrecord_list.append(path)
+                tfrecord_list.append(files)
+                conn1.send(tfrecord_list)
+        break
+    conn1.close()
+    p.join()
