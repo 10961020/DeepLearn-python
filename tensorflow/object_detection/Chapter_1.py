@@ -130,7 +130,7 @@ def models_yuce(con):
                                 continue
                             if num_output == 0:
                                 num_output += 1
-                                tree.find("filename").text = tf_list[2]
+                                tree.find("filename").text = '{}_{}{}'.format(os.path.splitext(tf_list[2])[0], value, os.path.splitext(tf_list[2])[1])
                                 tree.find("path").text = os.path.join(RESULT_IMAGE_PATHS, '{}_{}{}'.format(os.path.splitext(tf_list[2])[0], value, os.path.splitext(tf_list[2])[1]))
                                 tree.find("size/width").text = str(image2.size[0])
                                 tree.find("size/height").text = str(image2.size[1])
