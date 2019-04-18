@@ -8,7 +8,10 @@ import numpy as np
 import os
 from math import *
 
-
+'''
+         源作者地址
+         https://github.com/szad670401/end-to-end-for-chinese-plate-recognition
+'''
 # font = ImageFont.truetype("Arial-Bold.ttf",14)
 
 index = {"京": 0, "沪": 1, "津": 2, "渝": 3, "冀": 4, "晋": 5, "蒙": 6, "辽": 7, "吉": 8, "黑": 9, "苏": 10, "浙": 11, "皖": 12,
