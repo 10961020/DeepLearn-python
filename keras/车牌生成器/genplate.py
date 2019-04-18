@@ -202,14 +202,15 @@ class GenPlate:
     def genBatch(self, batchSize, pos, charRange, outputPath, size):
         if not os.path.exists(outputPath):
             os.mkdir(outputPath)
-        platestr_list, img_list = [], []
+        # platestr_list, img_list = [], []
         for i in range(batchSize):
                 plateStr = G.genPlateString(-1, -1)
-                platestr_list.append(plateStr)
+                # platestr_list.append(plateStr)
                 img = G.generate(plateStr)
                 img = cv2.resize(img, size)
-                img_list.append(img)
+                # img_list.append(img)
                 print(plateStr)
+                # 文件名中有中文乱码问题
                 cv2.imencode('.jpg', img)[1].tofile(os.path.join(outputPath, str(i).zfill(4) + '_' + plateStr + ".jpg"))
                 # cv2.imwrite(os.path.join(outputPath, str(i).zfill(4) + '_' + plateStr + ".jpg"), img)
         # return platestr_list, img_list
