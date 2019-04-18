@@ -197,9 +197,9 @@ class GenPlate:
                     plateStr += chars[r(31)]
                 elif cpos == 1:
                     plateStr += chars[41+r(24)]
-                else:  # 这里我做了修改还原真实车牌的构造 原方法生成的车牌图片中字母过多，现实中车牌图片后五位主要还是以数字组合
-                    j = r(238)
-                    x = j//19 if j < 190 else 10+(j-190)//2
+                else:  # 这里我做了修改还原真实车牌的构造 原方法生成的车牌图片中字母过多，现实中车牌图片后五位主要还是以数字组合 保证后五位出现数字的概率是80%
+                    j = r(600)
+                    x = j//48 if j < 480 else 10+(j-480)//2
                     plateStr += chars[31 + x]
                     # plateStr += chars[31+r(34)]
 
