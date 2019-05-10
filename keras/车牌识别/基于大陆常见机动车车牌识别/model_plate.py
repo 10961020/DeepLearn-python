@@ -10,11 +10,19 @@ from keras.optimizers import Adam
 from keras.backend.tensorflow_backend import set_session
 import tensorflow as tf
 import numpy as np
-
+'''
+         此模型跟车牌生成器生成的相比增加了 学 警 挂 三类车牌 当然需要自己标注这样的数据集才可以识别
+         没有处理新能源汽车的8位车牌 需要的话 可以在每个图片数据集不够8位的名称后增加一个缺失位 
+         如'晋M12345_'  替代模型网络结构的输出层增加一个输出 7->8  修改地方代码处已指出 同理 可以增加位数不够的车牌图片 缺失位都替换成'_'
+         chars列表最后一位在增加这个缺失符号'_' 同样修改位置已给出
+         未使用迁移学习 所以代码需要大量的车牌数据集 (这是一个痛苦的过程)
+         
+         网络结构可以随意修改 如有遇到过拟合欠拟合问题
+'''
 chars = ["京", "沪", "津", "渝", "冀", "晋", "蒙", "辽", "吉", "黑", "苏", "浙", "皖", "闽", "赣", "鲁", "豫", "鄂", "湘", "粤", "桂",
          "琼", "川", "贵", "云", "藏", "陕", "甘", "青", "宁", "新", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A",
          "B", "C", "D", "E", "F", "G", "H", "J", "K", "L", "M", "N", "P", "Q", "R", "S", "T", "U", "V", "W", "X",
-         "Y", "Z", "学", "警", "挂"]
+         "Y", "Z", "学", "警", "挂"]  # --->]前边加个 ,'_'
 M_strIdx = dict(zip(chars, range(len(chars))))
 
 
@@ -88,7 +96,7 @@ if __name__ == '__main__':
         x = Dropout(0.5)(x)
 
         n_class = len(chars)
-        x = [Dense(n_class, activation='softmax', name='c%d' % (i+1))(x) for i in range(7)]
+        x = [Dense(n_class, activation='softmax', name='c%d' % (i+1))(x) for i in range(7)]  # 如需识别新能源汽车的八位车牌  7改成8
         model = Model(inputs=input_tensor, outputs=x)
         print(model.summary())
         model.compile(loss='categorical_crossentropy',
