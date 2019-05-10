@@ -120,9 +120,6 @@ def models_yuce(con):
 
 # TODO 超速主进程
 def chaosu_function(waifa_number):
-    print('超速违法打开 ', waifa_number)
-    with open('result_chaosu.csv', 'w'):
-        pass
     test_image_paths = 'C:/Users/Administrator/Desktop/校验集/{}'.format(waifa_number)  # 原图片路径
     result_image_paths = 'D:/1/project/wuxi/result/{}'.format(waifa_number)  # 图片保存路径
     result_leibie_list = ['good', 'error']  # 图片分类保存的根路径
