@@ -8,7 +8,15 @@ import numpy as np
 import os
 from math import *
 import matplotlib.pyplot as plt
+'''
+         参考
+         https://cloud.tencent.com/developer/article/1005199  # 车牌识别模型
+         https://github.com/szad670401/end-to-end-for-chinese-plate-recognition  # 车牌数据集源地址
+         程序使用到的数据集是车牌生成器随机生成的数据
+         genplate()里边用到的都是相对路径 所以可能会报错 就是因为没有找到对应文件 把 当前文件跟genplate.py同级存放就可以 
+         但是同级存放需要from plate.genplate import * 改为 import genplate
 
+'''
 
 # font = ImageFont.truetype("Arial-Bold.ttf",14)
 
@@ -79,7 +87,7 @@ def tfactor(img):
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     hsv[:, :, 0] = hsv[:, :, 0]*(0.8 + np.random.random()*0.2)
     hsv[:, :, 1] = hsv[:, :, 1]*(0.3 + np.random.random()*0.7)
-    hsv[:, :, 2] = hsv[:, :, 2]*(0.5 + np.random.random()*0.5)
+    hsv[:, :, 2] = hsv[:, :, 2]*(0.5 + np.random.random()*0.5) # 这里如果觉得生成的图片暗 可以适当加到两个0.5
     img = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
 
     return img
@@ -147,8 +155,8 @@ class GenPlate:
         self.fontC = ImageFont.truetype(fontCh, 43, 0)
         self.fontE = ImageFont.truetype(fontEng, 60, 0)
         self.img = np.array(Image.new("RGB", (226, 70), (255, 255, 255)))
-        self.bg = cv2.resize(cv2.imread("./plate/images/template.bmp"), (226, 70))
-        self.smu = cv2.imread("./plate/images/smu2.jpg")
+        self.bg = cv2.resize(cv2.imread("./images/template.bmp"), (226, 70))
+        self.smu = cv2.imread("./images/smu2.jpg")
         self.noplates_path = []
         for parent, parent_folder, filenames in os.walk(NoPlates):
             for filename in filenames:
@@ -165,7 +173,7 @@ class GenPlate:
             self.img[0:70, base: base+23] = GenCh1(self.fontE, val[i+2])
         return self.img
 
-    def generate(self, text):
+    def generate(self, text):  # 这里是对图片内容的生成与加工 每次com结束可以show就可以大概清楚对应方法做了什么
         if len(text) == 7:
             fg = self.draw(text.encode('utf-8').decode(encoding="utf-8"))
             fg = cv2.bitwise_not(fg)
@@ -207,19 +215,12 @@ class GenPlate:
             img = G.generate(plateStr)
             img = cv2.resize(img, size)
             img_list.append(img)
-            # cv2.imencode('.jpg', img)[1].tofile(os.path.join(outputPath, str(i).zfill(4) + '_' + plateStr + ".jpg"))
-            # cv2.imwrite(os.path.join(outputPath, str(i).zfill(4) + '_' + plateStr + ".jpg"), img)
-        # X = np.array(img_list, dtype=np.uint8)
-        # X /= 255
-        # print(X)
+            # cv2.imencode('.jpg', img)[1].tofile(os.path.join(outputPath, str(i).zfill(4) + '_' + plateStr + ".jpg")) # 如需保存图片名中有中问
+            # cv2.imwrite(os.path.join(outputPath, str(i).zfill(4) + '_' + plateStr + ".jpg"), img) # 正常保存 作为车牌训练数据集的话一般不需要保存
         return platestr_list, img_list
 
-G = GenPlate("./plate/font/platech.ttf", './plate/font/platechar.ttf', "./plate/NoPlates")
+G = GenPlate("./font/platech.ttf", './font/platechar.ttf', "./NoPlates")
 if __name__ == '__main__':
-
-    # G = GenPlate("./font/platech.ttf", './font/platechar.ttf', "./NoPlates")
-    G = GenPlate("./plate/font/platech.ttf", './plate/font/platechar.ttf', "./plate/NoPlates")
+    G = GenPlate("./font/platech.ttf", './font/platechar.ttf', "./NoPlates")
+    # G = GenPlate("./plate/font/platech.ttf", './plate/font/platechar.ttf', "./plate/NoPlates")
     G.genBatch(100, 2, range(31, 65), "./carpai", (272, 72))
-
-    # cv2.imshow("a",com)
-    # cv2.waitKey(0)
