@@ -2,6 +2,12 @@
 # encoding: utf-8
 # Author: zhangtong
 # Time: 2019/3/5 15:53
+'''
+         程序使用到的数据集是车牌生成器随机生成的数据
+         genplate()里边用到的都是相对路径 所以可能会报错 就是因为没有找到对应文件 把 当前文件跟genplate.py同级存放就可以 
+         但是同级存放需要from plate.genplate import * 改为 import genplate
+         参考https://cloud.tencent.com/developer/article/1005199
+'''
 from keras.models import Model
 from keras.callbacks import ModelCheckpoint
 from keras.layers import Conv2D, MaxPool2D, Flatten, Dropout, Dense, Input
