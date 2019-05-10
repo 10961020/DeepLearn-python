@@ -9,12 +9,8 @@ import os
 from math import *
 import matplotlib.pyplot as plt
 '''
-         参考
-         https://cloud.tencent.com/developer/article/1005199  # 车牌识别模型
-         https://github.com/szad670401/end-to-end-for-chinese-plate-recognition  # 车牌数据集源地址
-         程序使用到的数据集是车牌生成器随机生成的数据
-         genplate()里边用到的都是相对路径 所以可能会报错 就是因为没有找到对应文件 把 当前文件跟genplate.py同级存放就可以 
-         但是同级存放需要from plate.genplate import * 改为 import genplate
+         参考https://github.com/szad670401/end-to-end-for-chinese-plate-recognition 车牌数据集源地址
+         车牌生成器作为数据集使用 关键代码已注释
 
 '''
 
@@ -210,9 +206,9 @@ class GenPlate:
             os.mkdir(outputPath)
         platestr_list, img_list = [], []
         for i in range(batchSize):
-            plateStr = G.genPlateString(-1, -1)
+            plateStr = G.genPlateString(-1, -1)  # 返回车牌字符串 例如 '晋M12345'
             platestr_list.append(plateStr)
-            img = G.generate(plateStr)
+            img = G.generate(plateStr)  # 返回生成好的车牌图片 使用CV2打开的
             img = cv2.resize(img, size)
             img_list.append(img)
             # cv2.imencode('.jpg', img)[1].tofile(os.path.join(outputPath, str(i).zfill(4) + '_' + plateStr + ".jpg")) # 如需保存图片名中有中问
