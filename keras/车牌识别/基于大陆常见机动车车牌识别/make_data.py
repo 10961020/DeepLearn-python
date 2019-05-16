@@ -31,9 +31,8 @@ def create_image_lists(testing_percentage, validating_percentage):
     for file_name in glob.glob('D:/1/project/plate_shibie/可以使用的/*.jpg'):  # 本地车牌图片的绝对路径
         dir_name = os.path.basename(file_name)
         print(os.path.splitext(dir_name)[0][:7])
-        img = cv2.imdecode(np.fromfile(file_name, dtype=np.uint8), 1)
-        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-        img.resize((42, 132, 3))
+        img = cv2.imdecode(np.fromfile(file_name, dtype=np.uint8), cv2.IMREAD_COLOR)
+        img = cv2.resize(img, (132, 42))
         # img_tensor = image.img_to_array(img)
         # img_tensor = np.expand_dims(img_tensor, axis=0)
 
