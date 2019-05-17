@@ -3,12 +3,12 @@
 # Author: zhangtong
 # Time: 2019/4/30 11:06
 import os
+from keras import regularizers
 from keras.models import Model, load_model
 from keras.callbacks import ModelCheckpoint
 from keras.layers import Conv2D, MaxPool2D, Flatten, Dropout, Dense, Input
 from keras.optimizers import Adam
 from keras.backend.tensorflow_backend import set_session
-import tensorflow as tf
 import numpy as np
 '''
          此模型跟车牌生成器生成的相比增加了 学 警 挂 三类车牌 当然需要自己标注这样的数据集才可以识别
@@ -25,7 +25,8 @@ chars = ["京", "沪", "津", "渝", "冀", "晋", "蒙", "辽", "吉", "黑", "
          "Y", "Z", "学", "警", "挂"]  # --->]前边加个 ,'_'
 M_strIdx = dict(zip(chars, range(len(chars))))
 
-
+# 一下两个方法运行时需要注释另一个
+# TODO 这个是没有做数据增强的训练集生成器
 def gen_train(batch_size=32):
     processed_data = np.load('1.npy')
     training_images = processed_data[0]
@@ -56,6 +57,30 @@ def gen_train(batch_size=32):
         start_size = over_size
         over_size = start_size + batch_size
         yield training_np, [yy for yy in y]
+
+
+# TODO 这个是做数据增强的训练集生成器
+def gen_train(batch_size=32):
+    processed_data = np.load('plate.npy')
+    training_images = processed_data[0]
+    training_labels = processed_data[1]
+    training_np = np.array(training_images, dtype=np.uint8)
+
+    train_datagen = ImageDataGenerator(
+        rotation_range=5,  # 角度值，图像随机旋转的角度范围
+        width_shift_range=0.1,  # 水平方向上平移的范围
+        height_shift_range=0.1,  # 垂直方向上平移的范围
+        fill_mode='nearest',
+        zoom_range=0.1)  # 图像随机缩放的范围
+    training_np = train_datagen.flow(training_np, training_labels)  # 默认取32个一次
+    while True:
+        a = training_np.next()
+        ytmp = np.array(list(map(lambda x: [M_strIdx[a] for a in list(x)], a[1])), dtype=np.uint8)
+        y = np.zeros([ytmp.shape[1], batch_size, len(chars)])
+        for batch in range(batch_size):
+            for idx, row_i in enumerate(ytmp[batch]):
+                y[idx, batch, row_i] = 1
+        yield a[0], [yy for yy in y]
 
 
 def gen_val(batch_size=32):
@@ -93,10 +118,10 @@ if __name__ == '__main__':
             x = Conv2D(32*2**i, (3, 3), activation='relu')(x)
             x = MaxPool2D(pool_size=(2, 2))(x)
         x = Flatten()(x)
-        x = Dropout(0.5)(x)
-
+        x = Dropout(0.25)(x)
+        x = [Dense(256, kernel_regularizer=regularizers.l2(0.001),  activation='relu')(x) for i in range(7)]
         n_class = len(chars)
-        x = [Dense(n_class, activation='softmax', name='c%d' % (i+1))(x) for i in range(7)]  # 如需识别新能源汽车的八位车牌  7改成8
+        x = [Dense(n_class, activation='softmax', name='c%d' % (i+1))(x[i]) for i in range(7)]
         model = Model(inputs=input_tensor, outputs=x)
         print(model.summary())
         model.compile(loss='categorical_crossentropy',
@@ -105,6 +130,6 @@ if __name__ == '__main__':
 
     best_model = ModelCheckpoint("chepai_best.h5", monitor='val_loss', verbose=0, save_best_only=True)
 
-    model.fit_generator(gen_train(32), steps_per_epoch=100, epochs=40000,
-                        validation_data=gen_val(32), validation_steps=2,
+    model.fit_generator(gen_train(32), steps_per_epoch=2000, epochs=40000,
+                        validation_data=gen_val(32), validation_steps=17,
                         callbacks=[best_model])
