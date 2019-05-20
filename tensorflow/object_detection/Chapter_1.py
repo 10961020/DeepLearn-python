@@ -96,8 +96,9 @@ def models_yuce(con):
 
     c1, c2 = con
     c1.close()  # 主进程用conn1发送数据,子进程要用对应的conn2接受,所以讲conn1关闭,不关闭程序会阻塞
+    config = tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True))
     with detection_graph.as_default():
-        with tf.Session() as sess:
+        with tf.Session(config=config) as sess:
             ops = tf.get_default_graph().get_operations()
             all_tensor_names = {output.name for op in ops for output in op.outputs}
             tensor_dict = {}
