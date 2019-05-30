@@ -2,6 +2,14 @@
 # encoding: utf-8
 # Author: zhangtong
 # Time: 2019/5/28 10:27
+
+'''
+    使用cifar10数据集 首次使用需要下载cifar10 运行之后自动下载，下载完成之后再次运行不会重新下载
+    运行前需要在同级目录创建名为 your_dir 文件夹
+    参考 python深度学习 GAN使用 
+    选择生成的图案是青蛙
+    生成的效果图见your_dir文件夹内
+'''
 import os
 import keras
 from keras import layers
@@ -13,7 +21,7 @@ height = 32
 width = 32
 channles = 3
 
-iterations = 10000
+iterations = 50000
 batch_size = 20
 save_dir = 'your_dir'
 # 稀疏的梯度会妨碍GAN的训练 导致梯度稀疏的两件事:最大池化和relu
@@ -57,7 +65,7 @@ x = layers.Dense(1, activation='sigmoid')(x)
 discriminator = keras.models.Model(discriminator_input, x)
 discriminator.summary()
 # decay使用学习率衰减，为了稳定训练过程;clipvalue在优化器中使用梯度裁剪,限制梯度值的范围
-discriminator_optimizer = keras.optimizers.RMSprop(lr=0.0008, clipvalue=1.0, decay=1e-8)
+discriminator_optimizer = keras.optimizers.RMSprop(lr=0.001, clipvalue=1.0, decay=1e-8)
 
 discriminator.compile(optimizer=discriminator_optimizer, loss='binary_crossentropy')
 
@@ -106,7 +114,7 @@ for step in range(iterations):
     start += batch_size
     if start > len(x_train) - batch_size:
         start = 0
-    print('---------', step)
+ 
     if step % 100 == 0:
         gan.save_weights('gan.h5')
         generator.save_weights('generator.h5')
