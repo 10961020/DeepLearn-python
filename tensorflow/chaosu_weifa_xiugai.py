@@ -7,11 +7,6 @@
     此程序开启双进程 通过管道传输预处理好的数据 将数据预处理跟模型预测分开实现，减少GPU的等待时间，加快运算速度，使用SSD算法定位车与车牌，然后加上逻辑判断
     1080ti 环境下使用 大概一秒8张图片数据的处理
 '''
-# !/usr/bin/python
-# encoding: utf-8
-# Author: zhangtong
-# Time: 2019/3/14 11:19
-
 import os
 import time
 import shutil
