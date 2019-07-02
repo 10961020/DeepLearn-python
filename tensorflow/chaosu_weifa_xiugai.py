@@ -7,133 +7,113 @@
     此程序开启双进程 通过管道传输预处理好的数据 将数据预处理跟模型预测分开实现，减少GPU的等待时间，加快运算速度，使用SSD算法定位车与车牌，然后加上逻辑判断
     1080ti 环境下使用 大概一秒8张图片数据的处理
 '''
+# !/usr/bin/python
+# encoding: utf-8
+# Author: zhangtong
+# Time: 2019/3/14 11:19
+
 import os
-import sys
 import time
 import shutil
 import numpy as np
-import label_map_util
 from PIL import Image
 import tensorflow as tf
-# import matplotlib.pyplot as plt
-from keras.models import load_model
 from keras.preprocessing import image
 from multiprocessing import Process, Pipe
 
-# frozen_inference_graph.pb中保存的网络的结构跟数据
-# own_label_map.pbtxt中保存index到类别名的映射 需要通过pbtxt具体对应的类别是什么
-# PATH_TO_Classification 车牌识别模型
-# 第四个全局是自训练的目录 路径名最后一层必须是 “img” 因为我懒得加这个在xml里 如果不是 打的标签不能用
-# 第五个图片分类的根路径
-PATH_TO_FROZEN_GRAPH = 'frozen_inference_graph.pb'
-PATH_TO_Classification = 'chepai_best.h5'
-PATH_TO_LABELS = 'own_label_map.pbtxt'
-TEST_IMAGE_PATHS = ['C:/Users/Administrator/Desktop/校验集']
-RESULT_IMAGE_PATHS = 'D:/1/project/wuxi'
-NUM_CLASSES = 1
-plate_dict = {}  # 格式内容 {0(左图):[车牌图片],1(右图):[车牌图片]}
-chars = ["京", "沪", "津", "渝", "冀", "晋", "蒙", "辽", "吉", "黑", "苏", "浙", "皖", "闽", "赣", "鲁", "豫", "鄂", "湘", "粤", "桂",
-         "琼", "川", "贵", "云", "藏", "陕", "甘", "青", "宁", "新", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A",
-         "B", "C", "D", "E", "F", "G", "H", "J", "K", "L", "M", "N", "P", "Q", "R", "S", "T", "U", "V", "W", "X",
-         "Y", "Z"]
 
-result_leibie_list = ['good', 'error']  # 图片分类保存的根路径
-result_path_list = []
-for i in range(len(result_leibie_list)):
-    result_path_list.append(os.path.join(RESULT_IMAGE_PATHS, result_leibie_list[i]))
-    if not os.path.exists(result_path_list[i]):
-        os.makedirs(result_path_list[i])
-TEST_IMAGE_PATHS.append(result_path_list[1])
-
-
-def tf_pretreatment(image_path, files, path, rollback):
-    tf_list = []
-    img_list = []
-    file = image_path.split('_')
-    file[6] = '2'
-    file = '_'.join(file)
+# TODO 数据预处理
+def tf_pretreatment(image_path, path, result_path_list):
     image_1 = Image.open(os.path.join(path, image_path))
     try:
-        if not rollback:
-            if file in files:  # 多张一组
-                image_2 = Image.open(os.path.join(path, file))
-                image_1 = image_1.crop((0, image_1.size[1]*0.2, image_1.size[0], image_1.size[1]))
-                image_2 = image_2.crop((0, image_2.size[1]*0.2, image_2.size[0], image_2.size[1]))
-                img_list.append(image.img_to_array(image_1).astype(np.uint8))
-                tf_list.append(np.expand_dims(img_list[-1], axis=0))
-                img_list.append(image.img_to_array(image_2).astype(np.uint8))
-                tf_list.append(np.expand_dims(img_list[-1], axis=0))
-            else:
-                if image_1.size[0] > image_1.size[1]:  # 左右拼接
-                    img1 = image_1.crop((0, 0, image_1.size[0]/2, image_1.size[1]))
-                    img2 = image_1.crop((image_1.size[0]/2, 0, image_1.size[0], image_1.size[1]))
-                    img1 = img1.crop((0, img1.size[1] * 0.2, img1.size[0], img1.size[1]))
-                    img2 = img2.crop((0, img2.size[1] * 0.2, img2.size[0], img2.size[1]))
-                    img_list.append(image.img_to_array(img1).astype(np.uint8))
-                    tf_list.append(np.expand_dims(img_list[-1], axis=0))
-                    img_list.append(image.img_to_array(img2).astype(np.uint8))
-                    tf_list.append(np.expand_dims(img_list[-1], axis=0))
-                else:  # 上下拼接
-                    img1 = image_1.crop((0, 0, image_1.size[0], image_1.size[1]/2))
-                    img2 = image_1.crop((0, image_1.size[1]/2, image_1.size[0], image_1.size[1]))
-                    img1 = img1.crop((0, img1.size[1] * 0.2, img1.size[0], img1.size[1]))
-                    img2 = img2.crop((0, img2.size[1] * 0.2, img2.size[0], img2.size[1]))
-                    img_list.append(image.img_to_array(img1).astype(np.uint8))
-                    tf_list.append(np.expand_dims(img_list[-1], axis=0))
-                    img_list.append(image.img_to_array(img2).astype(np.uint8))
-                    tf_list.append(np.expand_dims(img_list[-1], axis=0))
-        else:
-            if image_1.size[0]/image_1.size[1] > 1.709:
-                img1 = image_1.crop((0, 0, image_1.size[0] / 3, image_1.size[1]))
-                img2 = image_1.crop((image_1.size[0] / 3, 0, image_1.size[0]/3*2, image_1.size[1]))
-                img1 = img1.crop((0, img1.size[1] * 0.2, img1.size[0], img1.size[1]))
-                img2 = img2.crop((0, img2.size[1] * 0.2, img2.size[0], img2.size[1]))
-                img_list.append(image.img_to_array(img1).astype(np.uint8))
-                tf_list.append(np.expand_dims(img_list[-1], axis=0))
-                img_list.append(image.img_to_array(img2).astype(np.uint8))
-                tf_list.append(np.expand_dims(img_list[-1], axis=0))
-            else:
-                return None
+        if 0 < image_1.size[0] - image_1.size[1] < 500:
+            img1 = image_1.crop((image_1.size[0]/2, 0, image_1.size[0], image_1.size[1]/2))
+            img2 = image_1.crop((0, image_1.size[1]/2, image_1.size[0]/2, image_1.size[1]))
+            tf_list, img_list = load_image_into_numpy_array([img1, img2])
+        elif image_1.size[0] > image_1.size[1]:  # 左右拼接
+            img1 = image_1.crop((0, 0, image_1.size[0]/2, image_1.size[1]))
+            img2 = image_1.crop((image_1.size[0]/2, 0, image_1.size[0], image_1.size[1]))
+            tf_list, img_list = load_image_into_numpy_array([img1, img2])
+        else:  # 上下拼接
+            img1 = image_1.crop((0, 0, image_1.size[0], image_1.size[1]/2))
+            img2 = image_1.crop((0, image_1.size[1]/2, image_1.size[0], image_1.size[1]))
+            tf_list, img_list = load_image_into_numpy_array([img1, img2])
         return [tf_list, img_list]
     except OSError:  # 可以在这里删除错误图片 我没删
         print('这个有问题的图片{}'.format(image_path))
+        with open('result_chaosu.txt', 'a')as f:
+            f.write('{}#1#E0015 \n'.format(image_path.split(".")[0]))
+        save_img(path, image_path, "{}.jpg".format(image_path.split(".")[0]), result_path_list[1])
         return None
 
 
-def load_image_into_numpy_array(image_1):
-    im = image.img_to_array(image_1)
-    # image_np = np.array(image_1.getdata()).reshape((image_1.size[1], image_1.size[0], 3)).astype(np.uint8)
-    return np.expand_dims(im, axis=0), im
+def load_image_into_numpy_array(image_list):
+    tf_loadlist, img_loadlist = [], []
+    for i in image_list:
+        img1 = i.crop((0, 0, i.size[0], i.size[1]))
+        img_loadlist.append(image.img_to_array(img1).astype(np.uint8))
+        tf_loadlist.append(np.expand_dims(img_loadlist[-1], axis=0))
+    return tf_loadlist, img_loadlist
 
 
-def save_img(path, image_path, files, num):
-    shutil.move(os.path.join(path, image_path), os.path.join(result_path_list[num], image_path))
-    linshi_file = image_path.split('_')
-    linshi_file[6] = '2'
-    linshi_file = '_'.join(linshi_file)
-    if linshi_file in files:
-        shutil.move(os.path.join(path, linshi_file), os.path.join(result_path_list[num], linshi_file))
+# TODO 移动图片到指定位置
+def save_img(path, image_path, img_name, result_path):
+    # return None
+    shutil.copy(os.path.join(path, image_path), os.path.join(result_path, img_name))
 
 
+# TODO 非极大值抑制
+def py_cpu_nms(dets, scores, thresh=0.5):
+    """Pure Python NMS baseline."""
+    # x1、y1、x2、y2 赋值
+    x1 = dets[:, 1]
+    y1 = dets[:, 0]
+    x2 = dets[:, 3]
+    y2 = dets[:, 2]
+    # 每一个检测框的面积
+    areas = (x2 - x1 + 1) * (y2 - y1 + 1)
+    # 按照score置信度降序排序
+    order = scores.argsort()[::-1]
+
+    keep = []  # 保留的结果框集合
+    while order.size > 0:
+        i = order[0]
+        keep.append(i)
+        # 保留该类剩余box中得分最高的一个
+        # 得到相交区域,左上及右下
+        xx1 = np.maximum(x1[i], x1[order[1:]])
+        yy1 = np.maximum(y1[i], y1[order[1:]])
+        xx2 = np.minimum(x2[i], x2[order[1:]])
+        yy2 = np.minimum(y2[i], y2[order[1:]])
+        # 计算相交的面积,不重叠时面积为0
+
+        w = np.maximum(0.0, xx2 - xx1 + 1)
+        h = np.maximum(0.0, yy2 - yy1 + 1)
+        inter = w * h
+        # 计算IoU：重叠面积 /（面积1+面积2-重叠面积）
+        ovr = inter / (areas[i] + areas[order[1:]] - inter)
+        # 保留IoU小于阈值的box
+        inds = np.where(ovr <= thresh)[0]
+        order = order[inds + 1]
+    # 因为ovr数组的长度比order数组少一个,所以这里要将所有下标后移一位
+    return keep
+
+
+# TODO 模型预测
 def models_yuce(con):
     detection_graph = tf.Graph()  # 加载目标定位模型
     with detection_graph.as_default():
         od_graph_def = tf.GraphDef()
-        with tf.gfile.GFile(PATH_TO_FROZEN_GRAPH, 'rb') as fid:
+        with tf.gfile.GFile('frozen_inference_graph.pb', 'rb') as fid:
             serialized_graph = fid.read()
             od_graph_def.ParseFromString(serialized_graph)
             tf.import_graph_def(od_graph_def, name='')
 
-    label_map = label_map_util.load_labelmap(PATH_TO_LABELS)  # 加载目标定位类别编号
-    categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=NUM_CLASSES, use_display_name=True)
-    category_index = label_map_util.create_category_index(categories)
-
-    # model = load_model(PATH_TO_Classification)
-
     c1, c2 = con
     c1.close()  # 主进程用conn1发送数据,子进程要用对应的conn2接受,所以讲conn1关闭,不关闭程序会阻塞
+    config = tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True))
     with detection_graph.as_default():
-        with tf.Session() as sess:
+        with tf.Session(config=config) as sess:
             ops = tf.get_default_graph().get_operations()
             all_tensor_names = {output.name for op in ops for output in op.outputs}
             tensor_dict = {}
@@ -146,8 +126,7 @@ def models_yuce(con):
                 try:  # 异常处理,出现异常退出
                     tf_list = c2.recv()
                     value = 0  # 0左1右
-                    read_result = []
-                    plate_dict.clear()
+                    plate_dict = False
                     for image_np_expanded in tf_list[0]:  # 一组违法一张一张跑
                         # print(time.strftime("%Y-%m-%d %H:%M:%S ", time.localtime()))
                         output_dict = sess.run(tensor_dict, feed_dict={image_tensor: image_np_expanded})
@@ -156,114 +135,133 @@ def models_yuce(con):
                         output_dict['detection_classes'] = output_dict['detection_classes'][0].astype(np.uint8)
                         output_dict['detection_boxes'] = output_dict['detection_boxes'][0]
                         output_dict['detection_scores'] = output_dict['detection_scores'][0]
-
                         image2 = Image.fromarray(tf_list[1][value])
-                        car_list, plate_list = [], []
+
+                        car_list, plate_list, carwei_list = [], [], []
+                        car_list_scores, carwei_list_scores = [], []
                         for i in range(output_dict['num_detections']):  # 收集每个图片第一张车跟车牌 如果有的话
-                            if output_dict['detection_scores'][i] < 0.5 or (len(car_list) == 2 and plate_list):
+                            if output_dict['detection_scores'][i] < 0.5:
                                 break
                             if output_dict['detection_classes'][i] == 2 and not plate_list:
                                 plate_list.append(output_dict['detection_boxes'][i])
-                            if output_dict['detection_classes'][i] == 1 and len(car_list) < 2:
-                                car_list.append(output_dict['detection_boxes'][i])
-                        if len(car_list) == 2 and int(image2.size[1] * car_list[1][2]) > int(image2.size[1] * car_list[0][0]):
-                            if not int(tf_list[5]):
-                                with open('result.csv', 'a')as f:
-                                    f.write(tf_list[2] + ' 0 1 {}2\n'.format(value))  # 并行 2
-                                plate_dict.clear()
-                                save_img(tf_list[3], tf_list[2], tf_list[4], 1)
-                            break
-                        if plate_list:  # 如果有车牌 肯定是有车
-                            img = image2.crop((int(image2.size[0] * plate_list[0][1]),
-                                               int(image2.size[1] * plate_list[0][0]),
-                                               int(image2.size[0] * plate_list[0][3]),
-                                               int(image2.size[1] * plate_list[0][2])))
-                            plate_dict[value] = img
-                        elif car_list:  # 如果只有车牌 判断车牌底的位置跟图片底部位置关系
-                            if image2.size[1] - int(image2.size[1] * car_list[0][2]) < 90:
-                                if not int(tf_list[5]):
-                                    with open('result.csv', 'a')as f:
-                                        f.write(tf_list[2] + ' 0 1 {}1\n'.format(value))  # 车身不完整 1
-                                    plate_dict.clear()
-                                    save_img(tf_list[3], tf_list[2], tf_list[4], 1)
-                                break
-                            elif value == 1 and not plate_dict:  # 两辆车都没找到车牌 但是车位置明显完整
-                                if not int(tf_list[5]):
-                                    with open('result.csv', 'a')as f:
-                                        f.write(tf_list[2] + ' 1 0\n')  # 先默认车牌都对
-                                    save_img(tf_list[3], tf_list[2], tf_list[4], 0)
+                            if output_dict['detection_classes'][i] == 1:
+                                car_list.append(np.append(output_dict['detection_boxes'][i], np.ones(1)))
+                                car_list_scores.append(output_dict['detection_scores'][i])
+                            if output_dict['detection_classes'][i] == 3:
+                                carwei_list.append(np.append(output_dict['detection_boxes'][i], np.zeros(1)))
+                                carwei_list_scores.append(output_dict['detection_scores'][i])
+                        if car_list or carwei_list:
+                            # print('1 car_list', car_list)
+                            # print('1 carwei_list', carwei_list)
+                            if car_list and carwei_list:
+                                # print(car_list_scores, carwei_list_scores)
+                                car_num = np.r_[car_list, carwei_list]
+                                car_scores = np.append(car_list_scores, carwei_list_scores)
+                            elif not carwei_list:
+                                car_num = np.array(car_list)
+                                car_scores = np.array(car_list_scores)
+                            else:
+                                car_num = np.array(carwei_list)
+                                car_scores = np.array(carwei_list_scores)
+                            car_list, carwei_list = [], []
+                            b = np.array([image2.size[1], image2.size[0], image2.size[1], image2.size[0], 1.], dtype=float)
+                            car_num = car_num * b
+                            b = py_cpu_nms(car_num, car_scores)
+                            num = 0
+                            # print(b)
+                            for i in b:
+                                if car_num[i][-1]:
+                                    car_list.append(car_num[i])
                                 else:
-                                    with open('result.csv', 'r+')as f:
-                                        for a in f:
-                                            read_result.append(a.split(' '))
-                                        f.seek(0)
-                                        f.truncate()
-                                        for i in read_result:
-                                            if i[0] == tf_list[2]:
-                                                i[1] = '1'
-                                                i[2] = '0'
-                                                i[3] = '\n'
-                                                save_img(TEST_IMAGE_PATHS[1], tf_list[2], tf_list[4], 0)
-                                            f.write(' '.join(i))
-                        else:  # 能到这的图片都没找到 那就是没车喽
-                            if not int(tf_list[5]):
-                                with open('result.csv', 'a')as f:
-                                    f.write(tf_list[2] + ' 0 1 {}0\n'.format(value))  # 没找到车 0
-                                plate_dict.clear()
-                                save_img(tf_list[3], tf_list[2], tf_list[4], 1)
+                                    carwei_list.append(car_num[i])
+                                num += 1
+                                if num == 2:
+                                    break
+                            # print('2 car_list', car_list)
+                            # print('2 carwei_list', carwei_list)
+                        if carwei_list and not car_list:  # 仅有车尾
+                            with open('result_chaosu.txt', 'a')as f:
+                                f.write('{}#1#E0607 \n'.format(tf_list[2].split(".")[0]))  # 车尾607
+                            save_img(tf_list[3], tf_list[2], "{}.jpg".format(tf_list[2].split(".")[0]), tf_list[4][1])
+                            plate_dict = False
                             break
-                        value += 1
+                        elif not car_list:
+                            with open('result_chaosu.txt', 'a')as f:
+                                if not value:
+                                    f.write('{}#1#E0604 \n'.format(tf_list[2].split(".")[0]))  # 车身不完整 604
+                                else:
+                                    f.write('{}#1#E0606 \n'.format(tf_list[2].split(".")[0]))  # 车身不完整 606
+                            save_img(tf_list[3], tf_list[2], "{}.jpg".format(tf_list[2].split(".")[0]), tf_list[4][1])
+                            plate_dict = False
+                            break
+                        elif not plate_list:
+                            with open('result_chaosu.txt', 'a')as f:
+                                if not value:
+                                    f.write('{}#1#E0603 \n'.format(tf_list[2].split(".")[0]))  # 车身不完整 603
+                                else:
+                                    f.write('{}#1#E0605 \n'.format(tf_list[2].split(".")[0]))  # 车身不完整 605
+                            save_img(tf_list[3], tf_list[2], "{}.jpg".format(tf_list[2].split(".")[0]), tf_list[4][1])
+                            plate_dict = False
+                            break
+                        elif len(car_list)+len(carwei_list) == 2:
+                            if car_list and carwei_list:
+                                car_num = np.r_[car_list, carwei_list]
+                            elif not carwei_list:
+                                car_num = np.array(car_list)
+                            else:
+                                car_num = np.array(carwei_list)
+                            car_1 = (car_num[0][2] - car_num[0][0])/2 + car_num[0][0]
+                            car_2 = (car_num[1][2] - car_num[1][0])/2 + car_num[1][0]
+                            if abs(car_1 - car_2) < 200:
+                                with open('result_chaosu.txt', 'a')as f:
+                                    f.write('{}#1#E0602 \n'.format(tf_list[2].split(".")[0]))  # 并行602
+                                save_img(tf_list[3], tf_list[2], "{}.jpg".format(tf_list[2].split(".")[0]), tf_list[4][1])
+                                plate_dict = False
+                                break
 
+                        plate_dict = True
+                        value += 1
                     if plate_dict:
-                        if not int(tf_list[5]):
-                            with open('result.csv', 'a')as f:
-                                f.write(tf_list[2] + ' 1 0\n')  # 先默认车牌都对
-                            save_img(tf_list[3], tf_list[2], tf_list[4], 0)
-                        else:
-                            with open('result.csv', 'r+')as f:
-                                for a in f:
-                                    read_result.append(a.split(' '))
-                                f.seek(0)
-                                f.truncate()
-                                for i in read_result:
-                                    if i[0] == tf_list[2]:
-                                        i[1] = '1'
-                                        i[2] = '0'
-                                        i[3] = '\n'
-                                        save_img(TEST_IMAGE_PATHS[1], tf_list[2], tf_list[4], 0)
-                                    f.write(' '.join(i))
-            #     print(tf_list[2].split('_')[3])
-            #     for plate_key, plate_value in plate_dict.items():
-            #         img_tensor = image.img_to_array(plate_value.resize((152, 52)))
-            #         # print(plate_value.size)
-            #         # print(img_tensor.shape)
-            #         plate_value.resize((152, 52)).save('{}.jpg'.format(plate_key))
-            #         img_tensor = np.expand_dims(img_tensor, axis=0)
-            #         i = model.predict(img_tensor)
-            #         for j in range(7):
-            #             print(chars[int(np.where(i[j] == np.max(i[j]))[1])], end='')
-            #         print()
-                except EOFError:  # 说明素有数据已经全部接受,进程会抛出异常
+                        with open('result_chaosu.txt', 'a')as f:
+                            f.write('{}#0#0 \n'.format(tf_list[2].split(".")[0]))
+                        save_img(tf_list[3], tf_list[2], "{}.jpg".format(tf_list[2].split(".")[0]), tf_list[4][0])
+                except EOFError:
                     break
 
-if __name__ == '__main__':
+
+# TODO 超速主进程
+def chaosu_function(waifa_number):
+    print('超速违法打开 ', waifa_number)
+    test_image_paths = '/ping-data/cs'  # 原图片路径
+    # test_image_paths = r'C:\Users\Administrator\Desktop\1'  # 原图片路径
+    result_image_paths = '/ping-data/result/{}'.format(waifa_number)
+    result_leibie_list = ['good', 'error']  # 图片分类保存的根路径
+    result_path_list = []
+    for i in range(len(result_leibie_list)):
+        result_path_list.append(os.path.join(result_image_paths, result_leibie_list[i]))
+        if not os.path.exists(result_path_list[i]):
+            os.makedirs(result_path_list[i])
+
     conn1, conn2 = Pipe()  # 开启管道
     p = Process(target=models_yuce, args=((conn1, conn2),))  # 将管道的两个返回值以元组形式传给子进程
     p.start()
     conn2.close()  # 用conn1发送数据,conn2不用,将其关闭
-    for num in range(2):
-        for path, dirs, files in os.walk(TEST_IMAGE_PATHS[num]):
-            for image_path in files:
-                if image_path.split('_')[6] != '1':  # 碰到组合图片不是第一张图片直接跳过
-                    continue
-                print(time.strftime("%Y-%m-%d %H:%M:%S ", time.localtime()), os.path.join(path, image_path))
-                tfrecord_list = tf_pretreatment(image_path, files, path, num)  # 图片预处理
-                # print(time.strftime("%Y-%m-%d %H:%M:%S ", time.localtime()), '预处理时间')
-                if tfrecord_list:  # 能进这说明这张不是损坏图片
-                    tfrecord_list.append(image_path)
-                    tfrecord_list.append(path)
-                    tfrecord_list.append(files)
-                    tfrecord_list.append(str(num))
-                    conn1.send(tfrecord_list)
+    for path, dirs, files in os.walk(test_image_paths):
+        for image_path in files:
+            print(time.strftime("%Y-%m-%d %H:%M:%S ", time.localtime()), os.path.join(path, image_path))
+            tfrecord_list = tf_pretreatment(image_path, path, result_path_list)  # 图片预处理
+            if tfrecord_list:  # 能进这说明这张不是损坏图片
+                tfrecord_list.append(image_path)
+                tfrecord_list.append(path)
+                tfrecord_list.append(result_path_list)
+                conn1.send(tfrecord_list)
+        break
+
     conn1.close()
     p.join()
+
+if __name__ == '__main__':
+    start = time.time()
+    chaosu_function('ddcs')
+    end = time.time()
+    print(end-start)
