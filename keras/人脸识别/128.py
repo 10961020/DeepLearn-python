@@ -17,7 +17,8 @@ from keras.layers import Conv2D, Flatten, Dense, Input, MaxPooling2D, AveragePoo
 from keras.utils import plot_model
 
 '''
-make_data里有数据集验证集的制作细节问题，因为三元损失计算方式特殊的缘故
+make_data里有数据集验证集的制作细节问题，因为三元损失计算方式特殊的缘故，生成器生成训练验证集以及三元损失的计算仅适用于 make_data制作的训练数据
+参考
 https://github.com/michuanhaohao/keras_reid/blob/master/reid_tripletcls.py
 https://blog.csdn.net/Lauyeed/article/details/79514839
 '''
