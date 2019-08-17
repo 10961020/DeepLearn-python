@@ -17,6 +17,7 @@ from keras.layers import Conv2D, Flatten, Dense, Input, MaxPooling2D, AveragePoo
 from keras.utils import plot_model
 
 '''
+make_data里有数据集验证集的制作细节问题，因为三元损失计算方式特殊的缘故
 https://github.com/michuanhaohao/keras_reid/blob/master/reid_tripletcls.py
 https://blog.csdn.net/Lauyeed/article/details/79514839
 '''
@@ -103,7 +104,8 @@ def gen_train(batch_size=20):
         cow_img.extend(random.sample(train_images[:start_size//images_class_len*images_class_len] +
                                      train_images[(start_size//images_class_len+1)*images_class_len:], batch_size))
 
-        train_np = np.array(cow_img, dtype=np.uint8)
+        train_np = np.array(cow_img, dtype=float)
+        train_np /= 255
         y = np.zeros([batch_size*3, 1])
         start_size = over_size
         over_size = start_size + batch_size
@@ -129,7 +131,8 @@ def gen_val(batch_size=20):
         cow_img.extend(random.sample(val_images[:start_size//images_class_len*images_class_len] +
                                      val_images[(start_size//images_class_len+1)*images_class_len:], batch_size))
 
-        val_np = np.array(cow_img, dtype=np.uint8)
+        val_np = np.array(cow_img, dtype=float)
+        val_np /= 255
         y = np.zeros([batch_size*3, 1])
         start_size = over_size
         over_size = start_size + batch_size
